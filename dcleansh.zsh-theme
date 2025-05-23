@@ -11,7 +11,7 @@ set_ruby_version() {
   elif which rbenv &> /dev/null; then
     ruby="$(rbenv version-name)"
   elif which asdf &> /dev/null; then
-    asdf_ruby_ver=`asdf current ruby | awk -F' ' '{print $2}'`
+    asdf_ruby_ver=`asdf current ruby | awk '/ruby/{p=1} NF{out=$2} END{if(p==1){print out}}'`
     ruby="$asdf_ruby_ver"
   fi
 
@@ -22,7 +22,7 @@ set_node_version() {
   local node=''
 
   if which asdf &> /dev/null; then
-    asdf_node_ver=`asdf current nodejs | awk -F' ' '{print $2}'`
+    asdf_node_ver=`asdf current nodejs | awk '/nodejs/{p=1} NF{out=$2} END{if(p==1){print out}}'`
     node="$asdf_node_ver"
   fi
 
@@ -33,7 +33,7 @@ set_python_version() {
   local python=''
 
   if which asdf &> /dev/null; then
-    asdf_python_ver=`asdf current python | awk -F' ' '{print $2}'`
+    asdf_python_ver=`asdf current python | awk '/python/{p=1} NF{out=$2} END{if(p==1){print out}}'`
     python="$asdf_python_ver"
   fi
 
