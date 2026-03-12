@@ -3,89 +3,66 @@ local user_symbol='$'
 
 local current_dir='%{$terminfo[bold]$fg[blue]%}%~%{$reset_color%}'
 
-get_ruby_version() {
-  local ruby=''
+# Cache of tool versions — refreshed only when the current directory changes.
+# Uses a single `asdf current` / `mise current` call instead of per-tool subprocess calls.
+typeset -g _tool_versions=""
+typeset -g _tool_versions_dir=""
 
-  if which rvm-prompt &> /dev/null; then
-    ruby="$(rvm-prompt i v g)"
-  elif which rbenv &> /dev/null; then
-    ruby="$(rbenv version-name)"
-  elif which asdf &> /dev/null; then
-    asdf_ruby_ver=$(asdf current ruby | awk '/ruby/{p=1} NF{out=$2} END{if(p==1){print out}}')
-    ruby="$asdf_ruby_ver"
-  elif which mise &> /dev/null; then
-    mise_ruby_ver=$(mise current ruby 2>/dev/null)
-    if [[ "$mise_ruby_ver" != *WARN* && -n "$mise_ruby_ver" ]]; then
-      ruby="$mise_ruby_ver"
-    fi
-  elif which ruby &> /dev/null; then
+_update_tool_versions() {
+  [[ "$PWD" == "$_tool_versions_dir" ]] && return
+  _tool_versions_dir="$PWD"
+
+  local ruby_ver="" node_ver="" python_ver="" php_ver="" versions=""
+
+  # Single mise call covers all active tools at once.
+  # $2~/^[0-9]/ guards against "No version set" error messages.
+  if command -v mise &>/dev/null; then
+    local _mise_out
+    _mise_out=$(mise current 2>/dev/null)
+    ruby_ver=$(awk '$1=="ruby"   && $2~/^[0-9]/{print $2}' <<< "$_mise_out")
+    node_ver=$(awk '$1=="node"   && $2~/^[0-9]/{print $2}' <<< "$_mise_out")
+    python_ver=$(awk '$1=="python"&& $2~/^[0-9]/{print $2}' <<< "$_mise_out")
+    php_ver=$(awk '$1=="php"     && $2~/^[0-9]/{print $2}' <<< "$_mise_out")
+  fi
+
+  # Single asdf call fills any gaps left by mise (or replaces it when mise is absent).
+  if command -v asdf &>/dev/null && [[ -z "$ruby_ver" || -z "$node_ver" || -z "$python_ver" || -z "$php_ver" ]]; then
+    local _asdf_out
+    _asdf_out=$(asdf current 2>/dev/null)
+    [[ -z "$ruby_ver" ]]   && ruby_ver=$(awk '$1=="ruby"   && $2~/^[0-9]/{print $2}' <<< "$_asdf_out")
+    [[ -z "$node_ver" ]]   && node_ver=$(awk '$1=="nodejs" && $2~/^[0-9]/{print $2}' <<< "$_asdf_out")
+    [[ -z "$python_ver" ]] && python_ver=$(awk '$1=="python"&& $2~/^[0-9]/{print $2}' <<< "$_asdf_out")
+    [[ -z "$php_ver" ]]    && php_ver=$(awk '$1=="php"     && $2~/^[0-9]/{print $2}' <<< "$_asdf_out")
+  fi
+
+  # rvm and rbenv take priority over mise/asdf for Ruby.
+  if command -v rvm-prompt &>/dev/null; then
+    ruby_ver=$(rvm-prompt i v g 2>/dev/null)
+  elif command -v rbenv &>/dev/null; then
+    ruby_ver=$(rbenv version-name 2>/dev/null)
+  fi
+
+  # Last resort: system ruby.
+  if [[ -z "$ruby_ver" ]] && command -v ruby &>/dev/null; then
     ruby_ver=$(ruby -v 2>/dev/null | awk '{print $2}')
-    ruby="$ruby_ver"
   fi
 
-  if [[ -n "$ruby" ]]; then
-    echo -n " %F{#9B111E}[rb-$ruby]%f"
-  fi
+  [[ -n "$ruby_ver" ]]   && versions+=" %F{#9B111E}[rb-$ruby_ver]%f"
+  [[ -n "$node_ver" ]]   && versions+=" %F{#417e38}[n-$node_ver]%f"
+  [[ -n "$python_ver" ]] && versions+=" %F{#2b5b84}[py-$python_ver]%f"
+  [[ -n "$php_ver" ]]    && versions+=" %F{#4F5B93}[php-$php_ver]%f"
+
+  _tool_versions="$versions"
 }
 
-get_node_version() {
-  local node=''
-
-  if which asdf &> /dev/null; then
-    asdf_node_ver=`asdf current nodejs | awk '/nodejs/{p=1} NF{out=$2} END{if(p==1){print out}}'`
-    node="$asdf_node_ver"
-  elif which mise &> /dev/null; then
-    mise_node_ver=$(mise current node 2>/dev/null)
-    if [[ "$mise_node_ver" != *WARN* && -n "$mise_node_ver" ]]; then
-      node="$mise_node_ver"
-    fi
-  fi
-
-  if [[ -n "$node" ]]; then
-    echo -n " %F{#417e38}[n-$node]%f"
-  fi
-}
-
-get_python_version() {
-  local python=''
-
-  if which asdf &> /dev/null; then
-    asdf_python_ver=`asdf current python | awk '/python/{p=1} NF{out=$2} END{if(p==1){print out}}'`
-    python="$asdf_python_ver"
-  elif which mise &> /dev/null; then
-    mise_python_ver=$(mise current python 2>/dev/null)
-    if [[ "$mise_python_ver" != *WARN* && -n "$mise_python_ver" ]]; then
-      python="$mise_python_ver"
-    fi
-  fi
-
-  if [[ -n "$python" ]]; then
-    echo -n " %F{#2b5b84}[py-$python]%f"
-  fi
-}
-
-get_php_version() {
-  local php=''
-
-  if which asdf &> /dev/null; then
-    asdf_php_ver=`asdf current php | awk '/php/{p=1} NF{out=$2} END{if(p==1){print out}}'`
-    php="$asdf_php_ver"
-  elif which mise &> /dev/null; then
-    mise_php_ver=$(mise current php 2>/dev/null)
-    # Se a saída contiver 'WARN', ignora
-    if [[ "$mise_php_ver" != *WARN* && -n "$mise_php_ver" ]]; then
-      php="$mise_php_ver"
-    fi
-  fi
-
-  if [[ -n "$php" ]]; then
-    echo -n " %F{#4F5B93}[php-$php]%f"
-  fi
-}
+# Populate on shell startup (precmd) and on every directory change (chpwd).
+# The $PWD guard inside the function makes precmd a no-op when the directory is unchanged.
+add-zsh-hook chpwd _update_tool_versions
+add-zsh-hook precmd _update_tool_versions
 
 local git_branch=' $(git_prompt_info)%{$reset_color%}'
 
-PROMPT="${user_host} ${current_dir}$(get_ruby_version)$(get_node_version)$(get_python_version)$(get_php_version)${git_branch}
+PROMPT="${user_host} ${current_dir}"'${_tool_versions}'"${git_branch}
 %B${user_symbol}%b "
 
 ZSH_THEME_GIT_PROMPT_PREFIX="%{$fg[yellow]%}[ "
