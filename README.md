@@ -10,13 +10,26 @@ compact icons and minimal overhead.
 - Per-directory caching to avoid repeated tool calls.
 - Single-process parsing (reduces forks) for speed.
 - Auto-refreshes when version managers change versions (via `preexec`).
-- Small icons next to each version.
+- Small Nerd Font icons next to each version.
+- Requires a Nerd Font (such as Fira Code Nerd Font) for proper icon rendering.
 
 ## Screenshot
 
 ![Print screen cleansh theme](print.png)
 
 ## Install
+
+### Prerequisites
+
+Install the **Fira Code Nerd Font** to display the version icons properly:
+
+```sh
+brew install --cask font-fira-code-nerd-font
+```
+
+Then set it as your terminal's font in your terminal settings.
+
+### Installation
 
 Copy `cleanzsh.zsh-theme` into your Zsh themes directory (for example `~/.oh-my-zsh/custom/themes/`).
 

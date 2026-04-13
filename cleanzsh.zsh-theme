@@ -15,7 +15,7 @@ _update_tool_versions() {
   _tool_versions_dir="$PWD"
   unset _tool_pending_update
 
-  local ruby_ver="" node_ver="" python_ver="" php_ver="" versions=""
+  local ruby_ver="" node_ver="" python_ver="" php_ver="" bun_ver="" versions=""
 
   # Single mise call covers all active tools at once.
   # Use one awk invocation to avoid multiple forks for parsing.
@@ -27,14 +27,15 @@ _update_tool_versions() {
       $1=="node"   && $2~/^[0-9]/{n=$2}
       $1=="python" && $2~/^[0-9]/{p=$2}
       $1=="php"    && $2~/^[0-9]/{ph=$2}
-      END{print r "|" n "|" p "|" ph}
+      $1=="bun"    && $2~/^[0-9]/{b=$2}
+      END{print r "|" n "|" p "|" ph "|" b}
     ' <<< "$_mise_out")
     local IFS='|'
-    read -r ruby_ver node_ver python_ver php_ver <<< "$_mise_parsed"
+    read -r ruby_ver node_ver python_ver php_ver bun_ver <<< "$_mise_parsed"
   fi
 
   # Single asdf call fills any gaps left by mise (or replaces it when mise is absent).
-  if command -v asdf &>/dev/null && [[ -z "$ruby_ver" || -z "$node_ver" || -z "$python_ver" || -z "$php_ver" ]]; then
+  if command -v asdf &>/dev/null && [[ -z "$ruby_ver" || -z "$node_ver" || -z "$python_ver" || -z "$php_ver" || -z "$bun_ver" ]]; then
     local _asdf_out _asdf_parsed
     _asdf_out=$(asdf current 2>/dev/null)
     _asdf_parsed=$(awk '
@@ -42,14 +43,16 @@ _update_tool_versions() {
       $1=="nodejs" && $2~/^[0-9]/{n=$2}
       $1=="python" && $2~/^[0-9]/{p=$2}
       $1=="php"    && $2~/^[0-9]/{ph=$2}
-      END{print r "|" n "|" p "|" ph}
+      $1=="bun"    && $2~/^[0-9]/{b=$2}
+      END{print r "|" n "|" p "|" ph "|" b}
     ' <<< "$_asdf_out")
     local IFS='|'
-    read -r _r _n _p _ph <<< "$_asdf_parsed"
+    read -r _r _n _p _ph _b <<< "$_asdf_parsed"
     [[ -z "$ruby_ver" ]]   && ruby_ver=$_r
     [[ -z "$node_ver" ]]   && node_ver=$_n
     [[ -z "$python_ver" ]] && python_ver=$_p
     [[ -z "$php_ver" ]]    && php_ver=$_ph
+    [[ -z "$bun_ver" ]]    && bun_ver=$_b
   fi
 
   # nvm (shell function) can set the Node version; prefer it if available
@@ -75,10 +78,16 @@ _update_tool_versions() {
     ruby_ver=$(ruby -v 2>/dev/null | awk '{print $2}')
   fi
 
-  [[ -n "$ruby_ver" ]]   && versions+=" %F{#9B111E}[💎 rb-$ruby_ver]%f"
-  [[ -n "$node_ver" ]]   && versions+=" %F{#417e38}[⬢ n-$node_ver]%f"
-  [[ -n "$python_ver" ]] && versions+=" %F{#2b5b84}[🐍 py-$python_ver]%f"
-  [[ -n "$php_ver" ]]    && versions+=" %F{#4F5B93}[🐘 php-$php_ver]%f"
+  # System bun.
+  if [[ -z "$bun_ver" ]] && command -v bun &>/dev/null; then
+    bun_ver=$(bun --version 2>/dev/null)
+  fi
+
+  [[ -n "$ruby_ver" ]]   && versions+=" %F{#AE1401}[\ue739 rb-$ruby_ver]%f"
+  [[ -n "$node_ver" ]]   && versions+=" %F{#66CC33}[\ued0d n-$node_ver]%f"
+  [[ -n "$python_ver" ]] && versions+=" %F{#306998}[\ue73c py-$python_ver]%f"
+  [[ -n "$php_ver" ]]    && versions+=" %F{#777BB3}[\ue608 php-$php_ver]%f"
+  [[ -n "$bun_ver" ]]    && versions+=" %F{#FBF0DF}[\ue76f bun-$bun_ver]%f"
 
   _tool_versions="$versions"
 }
@@ -89,7 +98,7 @@ _tool_preexec() {
   local cmd
   cmd=${1%% *}
   case "$cmd" in
-    mise|asdf|rvm|rbenv|ruby|node|nvm)
+    mise|asdf|rvm|rbenv|ruby|node|nvm|bun)
       _tool_pending_update=1
       ;;
   esac
