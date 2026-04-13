@@ -16,6 +16,13 @@ _update_tool_versions() {
   unset _tool_pending_update
 
   local ruby_ver="" node_ver="" python_ver="" php_ver="" bun_ver="" versions=""
+  
+  # Pre-define Nerd Font icons
+  local ruby_icon=$'\ue739'
+  local node_icon=$'\ued0d'
+  local python_icon=$'\ue73c'
+  local php_icon=$'\ue608'
+  local bun_icon=$'\ue76f'
 
   # Single mise call covers all active tools at once.
   # Use one awk invocation to avoid multiple forks for parsing.
@@ -83,11 +90,11 @@ _update_tool_versions() {
     bun_ver=$(bun --version 2>/dev/null)
   fi
 
-  [[ -n "$ruby_ver" ]]   && versions+=" %F{#AE1401}[\ue739 rb-$ruby_ver]%f"
-  [[ -n "$node_ver" ]]   && versions+=" %F{#66CC33}[\ued0d n-$node_ver]%f"
-  [[ -n "$python_ver" ]] && versions+=" %F{#306998}[\ue73c py-$python_ver]%f"
-  [[ -n "$php_ver" ]]    && versions+=" %F{#777BB3}[\ue608 php-$php_ver]%f"
-  [[ -n "$bun_ver" ]]    && versions+=" %F{#FBF0DF}[\ue76f bun-$bun_ver]%f"
+  [[ -n "$ruby_ver" ]]   && versions+=" %F{#AE1401}[$ruby_icon rb-$ruby_ver]%f"
+  [[ -n "$node_ver" ]]   && versions+=" %F{#66CC33}[$node_icon n-$node_ver]%f"
+  [[ -n "$python_ver" ]] && versions+=" %F{#306998}[$python_icon py-$python_ver]%f"
+  [[ -n "$php_ver" ]]    && versions+=" %F{#777BB3}[$php_icon php-$php_ver]%f"
+  [[ -n "$bun_ver" ]]    && versions+=" %F{#FBF0DF}[$bun_icon bun-$bun_ver]%f"
 
   _tool_versions="$versions"
 }
